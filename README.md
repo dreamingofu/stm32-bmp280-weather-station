@@ -5,7 +5,7 @@ Real-time temperature and pressure monitoring using an STM32F446RE microcontroll
 ![Status](https://img.shields.io/badge/status-working-brightgreen)
 ![RTOS](https://img.shields.io/badge/RTOS-FreeRTOS-blue)
 
-![Setup](images\video/demonstration.gif)
+![Setup](https://github.com/dreamingofu/stm32-bmp280-weather-station/blob/c9636f06dff8a2e2e90d866c04b24fb0604f3dc6/images/video%20demonstration.gif)
 
 ## What It Does
 
@@ -102,7 +102,7 @@ Temp: 24.70 C  Pressure: 1019.78 hPa
 Temp: 76.44 F  Pressure: 1019.72 hPa    <-- after button press
 Temp: 76.45 F  Pressure: 1019.75 hPa
 ```
-![OLED Display](images\video/demonstration.gif)
+![OLED Display](https://github.com/dreamingofu/stm32-bmp280-weather-station/blob/c9636f06dff8a2e2e90d866c04b24fb0604f3dc6/images/video%20demonstration.gif)
 
 ## What I Learned
 
