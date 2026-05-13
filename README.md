@@ -5,7 +5,7 @@ Real-time temperature and pressure monitoring using an STM32F446RE microcontroll
 ![Status](https://img.shields.io/badge/status-working-brightgreen)
 ![RTOS](https://img.shields.io/badge/RTOS-FreeRTOS-blue)
 
-![Setup](https://github.com/dreamingofu/stm32-bmp280-weather-station/blob/c9636f06dff8a2e2e90d866c04b24fb0604f3dc6/images/video%20demonstration.gif)
+![Setup](https://github.com/dreamingofu/stm32-bmp280-weather-station/blob/c9636f06dff8a2e2e90d866c04b24fb0604f3dc6/images/Full%20C%20w%20Board.JPG)
 
 ## What It Does
 
