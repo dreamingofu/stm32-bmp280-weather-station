@@ -4,6 +4,7 @@ Real-time temperature and pressure monitoring using an STM32F446RE microcontroll
 
 ![Status](https://img.shields.io/badge/status-working-brightgreen)
 ![RTOS](https://img.shields.io/badge/RTOS-FreeRTOS-blue)
+![Setup](images/IMG_0068.JPG)
 
 ## What It Does
 
@@ -100,6 +101,7 @@ Temp: 24.70 C  Pressure: 1019.78 hPa
 Temp: 76.44 F  Pressure: 1019.72 hPa    <-- after button press
 Temp: 76.45 F  Pressure: 1019.75 hPa
 ```
+![OLED Display](images/IMG_0067.JPG)
 
 ## What I Learned
 
