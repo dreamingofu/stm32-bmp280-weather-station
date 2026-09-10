@@ -1,8 +1,23 @@
 #include "ssd1306.h"
+
 #include <string.h>
 
-// 5x7 font for ASCII characters 32-127
-static const uint8_t font5x7[][5] = {
+enum {
+    SSD1306_PAGE_HEIGHT = 8,
+    SSD1306_PAGE_COUNT = SSD1306_HEIGHT / SSD1306_PAGE_HEIGHT,
+    SSD1306_FONT_WIDTH = 5,
+    SSD1306_CHARACTER_WIDTH = SSD1306_FONT_WIDTH + 1,
+    SSD1306_FIRST_CHARACTER = 32,
+    SSD1306_LAST_CHARACTER = 126,
+    SSD1306_CONTROL_COMMAND = 0x00,
+    SSD1306_CONTROL_DATA = 0x40,
+    SSD1306_PAGE_START = 0xB0,
+    SSD1306_COLUMN_LOW = 0x00,
+    SSD1306_COLUMN_HIGH = 0x10
+};
+
+/* Five column bytes per printable ASCII glyph (32-126), lowest bit at the top. */
+static const uint8_t font5x7[][SSD1306_FONT_WIDTH] = {
     {0x00,0x00,0x00,0x00,0x00}, // space
     {0x00,0x00,0x5F,0x00,0x00}, // !
     {0x00,0x07,0x00,0x07,0x00}, // "
@@ -100,20 +115,23 @@ static const uint8_t font5x7[][5] = {
     {0x08,0x08,0x2A,0x1C,0x08}, // ~
 };
 
-static uint8_t buffer[SSD1306_WIDTH * SSD1306_HEIGHT / 8];
+/* One byte holds eight vertical pixels; each page contains 128 column bytes. */
+static uint8_t frame_buffer[SSD1306_WIDTH * SSD1306_PAGE_COUNT];
 static uint8_t cursor_x = 0;
-static uint8_t cursor_y = 0;
-static I2C_HandleTypeDef *ssd1306_i2c;
+static uint8_t cursor_page = 0;
+static I2C_HandleTypeDef *command_i2c;
 
-static void SSD1306_WriteCommand(uint8_t cmd)
+/* Command transfers always use the bus retained by SSD1306_Init. */
+static void SSD1306_WriteCommand(uint8_t command)
 {
-    uint8_t data[2] = {0x00, cmd};
-    HAL_I2C_Master_Transmit(ssd1306_i2c, SSD1306_ADDR, data, 2, HAL_MAX_DELAY);
+    uint8_t packet[2] = {SSD1306_CONTROL_COMMAND, command};
+    HAL_I2C_Master_Transmit(command_i2c, SSD1306_ADDR, packet,
+                            sizeof(packet), HAL_MAX_DELAY);
 }
 
 void SSD1306_Init(I2C_HandleTypeDef *hi2c)
 {
-    ssd1306_i2c = hi2c;
+    command_i2c = hi2c;
 
     HAL_Delay(100); // Wait for OLED to power up
 
@@ -152,45 +170,54 @@ void SSD1306_Init(I2C_HandleTypeDef *hi2c)
 
 void SSD1306_Clear(void)
 {
-    memset(buffer, 0, sizeof(buffer));
+    memset(frame_buffer, 0, sizeof(frame_buffer));
     cursor_x = 0;
-    cursor_y = 0;
+    cursor_page = 0;
 }
 
 void SSD1306_UpdateScreen(I2C_HandleTypeDef *hi2c)
 {
-    for (uint8_t page = 0; page < 8; page++) {
-        SSD1306_WriteCommand(0xB0 + page);
-        SSD1306_WriteCommand(0x00);
-        SSD1306_WriteCommand(0x10);
+    for (uint8_t page = 0; page < SSD1306_PAGE_COUNT; page++) {
+        SSD1306_WriteCommand(SSD1306_PAGE_START + page);
+        SSD1306_WriteCommand(SSD1306_COLUMN_LOW);
+        SSD1306_WriteCommand(SSD1306_COLUMN_HIGH);
 
-        uint8_t data[SSD1306_WIDTH + 1];
-        data[0] = 0x40; // Data mode
-        memcpy(&data[1], &buffer[SSD1306_WIDTH * page], SSD1306_WIDTH);
-        HAL_I2C_Master_Transmit(hi2c, SSD1306_ADDR, data, SSD1306_WIDTH + 1, HAL_MAX_DELAY);
+        uint8_t packet[SSD1306_WIDTH + 1];
+        packet[0] = SSD1306_CONTROL_DATA;
+        memcpy(&packet[1], &frame_buffer[SSD1306_WIDTH * page], SSD1306_WIDTH);
+        HAL_I2C_Master_Transmit(hi2c, SSD1306_ADDR, packet,
+                                sizeof(packet), HAL_MAX_DELAY);
     }
 }
 
 void SSD1306_SetCursor(uint8_t x, uint8_t y)
 {
     cursor_x = x;
-    cursor_y = y;
+    cursor_page = y;
 }
 
 void SSD1306_WriteChar(char ch)
 {
-    if (ch < 32 || ch > 126) return;
-    if (cursor_x + 6 > SSD1306_WIDTH) {
-        cursor_x = 0;
-        cursor_y += 1;
+    if (ch < SSD1306_FIRST_CHARACTER || ch > SSD1306_LAST_CHARACTER) {
+        return;
     }
-    if (cursor_y >= 8) return;
 
-    for (uint8_t i = 0; i < 5; i++) {
-        buffer[cursor_x + (cursor_y * SSD1306_WIDTH) + i] = font5x7[ch - 32][i];
+    /* Each glyph occupies five columns plus one blank separator column. */
+    if (cursor_x + SSD1306_CHARACTER_WIDTH > SSD1306_WIDTH) {
+        cursor_x = 0;
+        cursor_page += 1;
     }
-    buffer[cursor_x + (cursor_y * SSD1306_WIDTH) + 5] = 0x00; // Space between chars
-    cursor_x += 6;
+    if (cursor_page >= SSD1306_PAGE_COUNT) {
+        return;
+    }
+
+    const uint16_t glyph_offset = cursor_x + (cursor_page * SSD1306_WIDTH);
+    for (uint8_t column = 0; column < SSD1306_FONT_WIDTH; column++) {
+        frame_buffer[glyph_offset + column] =
+            font5x7[ch - SSD1306_FIRST_CHARACTER][column];
+    }
+    frame_buffer[glyph_offset + SSD1306_FONT_WIDTH] = 0x00;
+    cursor_x += SSD1306_CHARACTER_WIDTH;
 }
 
 void SSD1306_WriteString(const char *str)
